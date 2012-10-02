@@ -34,6 +34,7 @@ public class SimplePedometerActivity extends Activity implements SensorEventList
 	private float localMean = 0;
 	private float xyAcceleration = 0;
 	private int threshold = 0;
+	private float direction = 0;
 	
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -71,6 +72,12 @@ public class SimplePedometerActivity extends Activity implements SensorEventList
     	mSensorManager.unregisterListener(this);
     }
     
+    @Override
+    public void onDestroy() {
+    	super.onDestroy();
+    	mSensorManager.unregisterListener(this);
+    }
+    
 	public void onAccuracyChanged(Sensor sensor, int accuracy) {
 		// TODO Auto-generated method stub
 		
@@ -84,62 +91,70 @@ public class SimplePedometerActivity extends Activity implements SensorEventList
 			magnet = event.values;
 		}
 		if (gravity != null && magnet != null && event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
-			SensorManager.getRotationMatrix(inR, null, gravity, magnet);
-			android.opengl.Matrix.invertM(outR, 0, inR, 0);
-			linearAcceleration[0] = event.values[0];
-			linearAcceleration[1] = event.values[1];
-			linearAcceleration[2] = event.values[2];
-			
-			android.opengl.Matrix.multiplyMV(result, 0, outR, 0, linearAcceleration, 0);
-			
-			xyAcceleration = android.util.FloatMath.sqrt(result[0]*result[0] + result[1]*result[1]);
-			
-			
-			//xyMovement = false;
-			output.setText("");
-			if (xyAcceleration > 1.3) {
-				//xyMovement = true;
-				
-				if (localMax < result[2]) {
-					localMax = result[2];
-				}
-				if (localMin > result[2] && result[2] < localMax) {
-					localMin = result[2];
-				}
-				localMean = (localMax + localMin) / 2;
-				//if (localMedian - 0.2 >= result[2] && result[2] <= localMedian + 0.2) {
-				if (localMin <= localMean && localMean <= localMax) {
-					threshold++;
-					//step++;
-					localMax = 0;
-					localMin = 0;
-					
-				}
-				if (threshold > 50) {
-					threshold = 0;
-					step++;
-				}
-			}
-			
-			
-//				if (xyMovement) {
-//					
-//					
-//				}
-			
-			output.append(
-					"Acceleration:\n" +
-					"x:" + result[0] + "\n" +
-					"y:" + result[1] + "\n" +
-					"z:" + result[2] + "\n" +
-					"|x+y|:" + xyAcceleration + "\n" +
-					"mean:" + localMean + "\n"
-											);
-			
-			output.append("\nthreshold:"+ threshold + "\nsteps:"+ step);
+			displayData(event.values);
+		}		
+		
+	}
+	
+	private void displayData(float[] values) {
+		SensorManager.getRotationMatrix(inR, null, gravity, magnet);
+		android.opengl.Matrix.invertM(outR, 0, inR, 0);
+		
+		output.setText("");
+		
+		linearAcceleration[0] = values[0];
+		linearAcceleration[1] = values[1];
+		linearAcceleration[2] = values[2];
+		
+		
+		//check if phone is being held up right
+		if (0.9 < outR[6] && outR[6] < 1.1 ) {
+			//read in qr code//
+			return;
 		}
 		
+		android.opengl.Matrix.multiplyMV(result, 0, outR, 0, linearAcceleration, 0);
 		
+		xyAcceleration = android.util.FloatMath.sqrt(result[0]*result[0] + result[1]*result[1]);
+		
+		
+		//xyMovement = false;
+		if (xyAcceleration > 1.3) {
+			//xyMovement = true;
+			
+			if (localMax < result[2]) {
+				localMax = result[2];
+			}
+			if (localMin > result[2] && result[2] < localMax) {
+				localMin = result[2];
+			}
+			localMean = (localMax + localMin) / 2;
+			//if (localMedian - 0.2 >= result[2] && result[2] <= localMedian + 0.2) {
+			if (localMin <= localMean && localMean <= localMax) {
+				threshold++;
+				//step++;
+				localMax = 0;
+				localMin = 0;
+				
+			}
+			if (threshold > 50) {
+				threshold = 0;
+				step++;
+			}
+		}
+		
+		output.append(
+				"Acceleration:\n" +
+				"x:" + result[0] + "\n" +
+				"y:" + result[1] + "\n" +
+				"z:" + result[2] + "\n" +
+				"|x+y|:" + xyAcceleration + "\n" +
+				"mean:" + localMean + "\n"
+										);
+		
+		output.append("\nthreshold:"+ threshold + "\nsteps:"+ step);
+	
+
 	}
 	
 	public void resetSteps(View view) {
